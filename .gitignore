@@ -1,0 +1,18 @@
+# Claude Code local settings (machine-specific, not project content)
+.claude/
+
+# Data (raw and intermediate files are large and regenerable — see etl/ scripts)
+data/raw/
+data/interim/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
