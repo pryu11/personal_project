@@ -9,7 +9,7 @@ This is a personal learning project — first solo app, first time using Cursor 
 🚧 Work in progress, built in phases:
 
 - [x] Phase 0 — environment, git, and GitHub setup
-- [ ] Phase 1 — raw data acquisition and first filter
+- [x] Phase 1 — raw data acquisition and first filter
 - [ ] Phase 2 — data cleaning and Bay Area / role standardization
 - [ ] Phase 3 — dashboard skeleton
 - [ ] Phase 4 — full dashboard
