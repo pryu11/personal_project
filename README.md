@@ -11,7 +11,7 @@ This is a personal learning project — first solo app, first time using Cursor 
 - [x] Phase 0 — environment, git, and GitHub setup
 - [x] Phase 1 — raw data acquisition and first filter
 - [x] Phase 2 — data cleaning and Bay Area / role standardization
-- [ ] Phase 3 — dashboard skeleton
+- [x] Phase 3 — dashboard skeleton
 - [ ] Phase 4 — full dashboard
 - [ ] Phase 5 — polish, deploy, and publish
 
@@ -21,7 +21,14 @@ U.S. Department of Labor, Office of Foreign Labor Certification (OFLC) — publi
 
 ## Setup
 
-Instructions for running the data pipeline and dashboard locally will be added once they exist (Phase 3+).
+```
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+streamlit run app/Home.py
+```
+
+The dashboard reads from `data/processed/lca_bay_area_tech_clean.csv`, which is committed to the repo. To regenerate it from raw data, see `etl/build_dataset.py`.
 
 ## Built With
 
