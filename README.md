@@ -12,12 +12,14 @@ This is a personal learning project — first solo app, first time using Cursor 
 - [x] Phase 1 — raw data acquisition and first filter
 - [x] Phase 2 — data cleaning and Bay Area / role standardization
 - [x] Phase 3 — dashboard skeleton
-- [ ] Phase 4 — full dashboard
+- [x] Phase 4 — full dashboard
 - [ ] Phase 5 — polish, deploy, and publish
 
 ## Data Source
 
-U.S. Department of Labor, Office of Foreign Labor Certification (OFLC) — public LCA disclosure data. Details on the exact files and filtering used will be documented here as the pipeline is built.
+U.S. Department of Labor, Office of Foreign Labor Certification (OFLC) — public LCA disclosure data.
+
+Currently loaded: **FY2025 Q4** (decisions from July–September 2025), filtered to California worksites in tech/data SOC codes, then to Bay Area worksites only. More fiscal quarters/years will be added over time — see `docs/data_dictionary.md` for the full column reference and current known limitations.
 
 ## Setup
 

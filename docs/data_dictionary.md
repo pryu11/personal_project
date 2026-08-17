@@ -1,7 +1,11 @@
 # Data Dictionary — `data/processed/lca_bay_area_tech_clean.csv`
 
 Source: U.S. Department of Labor, Office of Foreign Labor Certification (OFLC),
-LCA (Labor Condition Application) disclosure data, FY2025 Q4 (Oct 2024–Sep 2025).
+LCA (Labor Condition Application) disclosure data, FY2025 Q4 (decisions dated
+Jul–Sep 2025 — DOL's fiscal year runs Oct–Sep, so Q4 is the final quarter,
+not the whole year). `RECEIVED_DATE` on these rows goes back much further
+(to April 2022) since a case can be decided long after it was filed —
+use `DECISION_DATE` for anything tied to "what FY2025 Q4 covers."
 
 Each row is one LCA filing (one job/worksite/wage combination an employer
 submitted as part of sponsoring an H-1B worker). This file has already been
@@ -40,5 +44,5 @@ filtered to California worksites in tech/data SOC codes (see
 
 - Employer names are self-reported and only partially standardized — a long tail of rare variants remains uncleaned by design (see plan rationale in `reference/employer_name_map.py`).
 - Bay Area membership is inferred from city name, not a direct county field, and covers 77.7% of the CA-tech-filtered rows; the rest are genuinely outside the 9-county Bay Area (LA, San Diego, Sacramento, Central Valley, Santa Cruz County, etc.).
-- Only one fiscal year (FY2025) is included so far — no multi-year trend data yet.
+- Only one fiscal quarter (FY2025 Q4, Jul–Sep 2025 decisions) is included so far — trend charts will be thin until more quarters/years are added.
 - `role_category` reflects the employer's self-reported SOC code, which can be inconsistent with the actual job duties.
