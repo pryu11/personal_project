@@ -19,7 +19,11 @@ This is a personal learning project — first solo app, first time using Cursor 
 
 U.S. Department of Labor, Office of Foreign Labor Certification (OFLC) — public LCA disclosure data.
 
-Currently loaded: **FY2025 Q4** (decisions from July–September 2025), filtered to California worksites in tech/data SOC codes, then to Bay Area worksites only. More fiscal quarters/years will be added over time — see `docs/data_dictionary.md` for the full column reference and current known limitations.
+Currently loaded:
+- **FY2025 Q3 + Q4** (decisions Apr–Sep 2025) — each a single-quarter file, since FY2025 is a completed fiscal year.
+- **FY2026 Q3** (decisions Oct 2025–Jun 2026) — DOL publishes the current, in-progress fiscal year's quarterly file as cumulative year-to-date, so this one file already covers all of FY2026 Q1–Q3, not just Q3 alone.
+
+All filtered to California worksites in tech/data SOC codes, then to Bay Area worksites only. More fiscal quarters/years will be added over time — see `docs/data_dictionary.md` for the full column reference and current known limitations.
 
 ## Setup
 

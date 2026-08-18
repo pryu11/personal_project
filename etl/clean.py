@@ -91,11 +91,39 @@ def add_role_category(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def add_fiscal_year(df: pd.DataFrame) -> pd.DataFrame:
+    """DOL's fiscal year runs Oct-Sep, so Oct-Dec belongs to the *next* year's FY."""
+    decision_date = pd.to_datetime(df["DECISION_DATE"])
+    fiscal_year = decision_date.dt.year + (decision_date.dt.month >= 10).astype(int)
+    df["DECISION_FISCAL_YEAR"] = "FY" + fiscal_year.astype(str)
+    return df
+
+
+WAGE_LEVEL_LABELS = {
+    "I": "Level I - Entry",
+    "II": "Level II - Qualified",
+    "III": "Level III - Experienced",
+    "IV": "Level IV - Fully Competent",
+}
+
+
+def add_experience_level(df: pd.DataFrame) -> pd.DataFrame:
+    """PW_WAGE_LEVEL (DOL's OES-based prevailing wage level) is the closest proxy
+    LCA data has to seniority -- Level I is defined as entry-level. Filings that
+    used a non-OES wage survey have no level at all, so those are labeled
+    Unknown rather than dropped.
+    """
+    df["experience_level"] = df["PW_WAGE_LEVEL"].map(WAGE_LEVEL_LABELS).fillna("Unknown")
+    return df
+
+
 def clean(df: pd.DataFrame) -> pd.DataFrame:
     df = add_bay_area_flag(df)
     df = add_employer_standardization(df)
     df = add_annual_wage(df)
     df = add_role_category(df)
+    df = add_fiscal_year(df)
+    df = add_experience_level(df)
     return df
 
 

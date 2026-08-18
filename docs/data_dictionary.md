@@ -1,11 +1,19 @@
 # Data Dictionary — `data/processed/lca_bay_area_tech_clean.csv`
 
 Source: U.S. Department of Labor, Office of Foreign Labor Certification (OFLC),
-LCA (Labor Condition Application) disclosure data, FY2025 Q4 (decisions dated
-Jul–Sep 2025 — DOL's fiscal year runs Oct–Sep, so Q4 is the final quarter,
-not the whole year). `RECEIVED_DATE` on these rows goes back much further
-(to April 2022) since a case can be decided long after it was filed —
-use `DECISION_DATE` for anything tied to "what FY2025 Q4 covers."
+LCA (Labor Condition Application) disclosure data. Three raw quarterly files are
+currently loaded (DOL's fiscal year runs Oct–Sep):
+
+- FY2025 Q3 (decisions Apr–Jun 2025) and FY2025 Q4 (decisions Jul–Sep 2025) —
+  FY2025 is a completed fiscal year, so each quarterly file covers only that quarter.
+- FY2026 Q3 (decisions Oct 2025–Jun 2026) — FY2026 is still in progress, and DOL
+  publishes the current fiscal year's quarterly file as cumulative year-to-date,
+  so this single file already covers all of FY2026 Q1–Q3, not just Q3 alone.
+
+`RECEIVED_DATE` on these rows can go back much further than any of the above,
+since a case can be decided long after it was filed — use `DECISION_DATE` (or
+the derived `DECISION_FISCAL_YEAR` column) for anything tied to "what fiscal
+period this data covers."
 
 Each row is one LCA filing (one job/worksite/wage combination an employer
 submitted as part of sponsoring an H-1B worker). This file has already been
@@ -28,6 +36,7 @@ filtered to California worksites in tech/data SOC codes (see
 | `WAGE_RATE_OF_PAY_FROM` / `WAGE_RATE_OF_PAY_TO` | Wage as reported, in whatever unit `WAGE_UNIT_OF_PAY` specifies |
 | `WAGE_UNIT_OF_PAY` | `Year`, `Hour`, `Week`, `Bi-Weekly`, or `Month` |
 | `PREVAILING_WAGE` | DOL's benchmark wage for the role/location, for comparison |
+| `PW_WAGE_LEVEL` | OES wage level (`I`–`IV`) backing the prevailing wage, DOL's standard seniority proxy — Level I is entry-level, IV is fully competent/expert. `NaN` when the employer used a non-OES wage source instead (see `experience_level` below). |
 
 ## Derived columns (added by `etl/clean.py`)
 
@@ -39,10 +48,13 @@ filtered to California worksites in tech/data SOC codes (see
 | `ANNUAL_WAGE_FROM` / `ANNUAL_WAGE_TO` | `WAGE_RATE_OF_PAY_FROM`/`TO` annualized using `WAGE_UNIT_OF_PAY` (Hour ×2080, Week ×52, Bi-Weekly ×26, Month ×12, Year ×1). |
 | `wage_is_plausible` | `False` if `ANNUAL_WAGE_FROM` falls outside a $20,000–$1,000,000 plausibility band — almost always an employer picking the wrong `WAGE_UNIT_OF_PAY` at filing time (e.g. a $200,000 annual salary mistakenly tagged as hourly). **Flagged, not dropped** — the raw values are preserved either way so nothing is silently discarded. |
 | `role_category` | Human-readable role name mapped from `SOC_CODE`'s 7-character prefix via `reference/tech_soc_codes.py` (e.g. `15-2051` → "Data Scientists"). |
+| `DECISION_FISCAL_YEAR` | DOL fiscal year (Oct–Sep) the filing was decided in, derived from `DECISION_DATE` via `add_fiscal_year()` in `etl/clean.py`. Used to group the Top Sponsoring Employers table and other year-based views; note that the FY2026 bucket is a partial year to date (see Known limitations). |
+| `experience_level` | Human-readable label for `PW_WAGE_LEVEL` (e.g. `"Level I - Entry"`), with `NaN` mapped to `"Unknown"` rather than dropped, via `add_experience_level()` in `etl/clean.py`. There's no dedicated field for internships — H-1B LCA filings are specialty-occupation employment, not internships (those go through F-1 OPT/CPT and don't file an LCA), so this can only approximate "entry-level," not "internship." |
 
 ## Known limitations
 
 - Employer names are self-reported and only partially standardized — a long tail of rare variants remains uncleaned by design (see plan rationale in `reference/employer_name_map.py`).
 - Bay Area membership is inferred from city name, not a direct county field, and covers 77.7% of the CA-tech-filtered rows; the rest are genuinely outside the 9-county Bay Area (LA, San Diego, Sacramento, Central Valley, Santa Cruz County, etc.).
-- Only one fiscal quarter (FY2025 Q4, Jul–Sep 2025 decisions) is included so far — trend charts will be thin until more quarters/years are added.
+- Three fiscal quarters are included so far — FY2025 Q3, FY2025 Q4, and FY2026 Q3 (the last of which is cumulative Oct 2025–Jun 2026, not a single quarter). FY2025 is a complete fiscal year; FY2026 is still in progress, so any FY2025-vs-FY2026 comparison (e.g. in the Top Sponsoring Employers table) is comparing a full year against a partial year to date.
 - `role_category` reflects the employer's self-reported SOC code, which can be inconsistent with the actual job duties.
+- `experience_level` is `"Unknown"` for ~28% of rows (18,366 of 65,559) — filings that used a non-OES prevailing wage source have no `PW_WAGE_LEVEL` at all, so they can't be bucketed as entry-level or not.
