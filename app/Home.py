@@ -132,7 +132,7 @@ employer_table = employer_table.sort_values("Total", ascending=False).head(TOP_E
 employer_table = employer_table.reset_index().rename(columns={"EMPLOYER_NAME_CLEAN": "Company"})
 employer_table.insert(0, "Rank", range(1, len(employer_table) + 1))
 employer_table = employer_table[["Rank", "Company"] + fiscal_year_cols + ["Total"]]
-st.dataframe(employer_table, hide_index=True, use_container_width=True)
+st.dataframe(employer_table, hide_index=True)
 
 # --- Salary distribution by role category ---
 st.subheader("Salary Distribution by Role")
@@ -144,7 +144,7 @@ role_order = (
 fig = px.box(wage_df, x="role_category", y="ANNUAL_WAGE_FROM", category_orders={"role_category": list(role_order)})
 fig.update_traces(marker_color=CHART_ACCENT, line_color=CHART_ACCENT)
 fig.update_layout(xaxis_title=None, yaxis_title="Annual Wage ($)", xaxis_tickangle=-30)
-st.plotly_chart(style_chart(fig), use_container_width=True)
+st.plotly_chart(style_chart(fig))
 
 # --- Monthly filing volume by outcome ---
 st.subheader("Monthly Filing Volume by Outcome")
@@ -209,7 +209,7 @@ fig.update_yaxes(title_text="Denied filings", secondary_y=True)
 fig.update_layout(xaxis_title=None, legend_title_text=None)
 fig = style_chart(fig)
 fig.update_yaxes(showgrid=False, secondary_y=True)
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig)
 
 # --- Geographic breakdown ---
 st.subheader("Filings by County")
@@ -220,4 +220,4 @@ county_counts.columns = ["County", "Filings"]
 fig = px.bar(county_counts, x="Filings", y="County", orientation="h")
 fig.update_traces(marker_color=CHART_ACCENT)
 fig.update_layout(yaxis={"categoryorder": "total ascending"})
-st.plotly_chart(style_chart(fig), use_container_width=True)
+st.plotly_chart(style_chart(fig))
