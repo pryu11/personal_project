@@ -6,14 +6,16 @@ This is a personal learning project — first solo app, first time using Cursor 
 
 ## Status
 
-🚧 Work in progress, built in phases:
+✅ Deployed, built in phases:
 
 - [x] Phase 0 — environment, git, and GitHub setup
 - [x] Phase 1 — raw data acquisition and first filter
 - [x] Phase 2 — data cleaning and Bay Area / role standardization
 - [x] Phase 3 — dashboard skeleton
 - [x] Phase 4 — full dashboard
-- [ ] Phase 5 — polish, deploy, and publish
+- [x] Phase 5 — polish, deploy, and publish
+
+**Live app:** https://personalproject-bayareah1bdashboard.streamlit.app/
 
 ## Data Source
 
