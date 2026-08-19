@@ -50,6 +50,8 @@ filtered to California worksites in tech/data SOC codes (see
 | `role_category` | Human-readable role name mapped from `SOC_CODE`'s 7-character prefix via `reference/tech_soc_codes.py` (e.g. `15-2051` → "Data Scientists"). |
 | `DECISION_FISCAL_YEAR` | DOL fiscal year (Oct–Sep) the filing was decided in, derived from `DECISION_DATE` via `add_fiscal_year()` in `etl/clean.py`. Used to group the Top Sponsoring Employers table and other year-based views; note that the FY2026 bucket is a partial year to date (see Known limitations). |
 | `experience_level` | Human-readable label for `PW_WAGE_LEVEL` (e.g. `"Level I - Entry"`), with `NaN` mapped to `"Unknown"` rather than dropped, via `add_experience_level()` in `etl/clean.py`. There's no dedicated field for internships — H-1B LCA filings are specialty-occupation employment, not internships (those go through F-1 OPT/CPT and don't file an LCA), so this can only approximate "entry-level," not "internship." |
+| `ANNUAL_PREVAILING_WAGE` | `PREVAILING_WAGE` annualized using `PW_UNIT_OF_PAY` (same multipliers as `ANNUAL_WAGE_FROM`/`TO`) — needed because the prevailing wage's pay-period unit can differ from the offered wage's `WAGE_UNIT_OF_PAY`. |
+| `wage_premium_pct` | `(ANNUAL_WAGE_FROM - ANNUAL_PREVAILING_WAGE) / ANNUAL_PREVAILING_WAGE * 100` — how far above (+) or below (-) DOL's prevailing wage benchmark the offered wage is. Computed for all rows; aggregate it only over `wage_is_plausible == True` rows, same as any other use of `ANNUAL_WAGE_FROM`. |
 
 ## Known limitations
 
@@ -58,3 +60,4 @@ filtered to California worksites in tech/data SOC codes (see
 - Three fiscal quarters are included so far — FY2025 Q3, FY2025 Q4, and FY2026 Q3 (the last of which is cumulative Oct 2025–Jun 2026, not a single quarter). FY2025 is a complete fiscal year; FY2026 is still in progress, so any FY2025-vs-FY2026 comparison (e.g. in the Top Sponsoring Employers table) is comparing a full year against a partial year to date.
 - `role_category` reflects the employer's self-reported SOC code, which can be inconsistent with the actual job duties.
 - `experience_level` is `"Unknown"` for ~28% of rows (18,366 of 65,559) — filings that used a non-OES prevailing wage source have no `PW_WAGE_LEVEL` at all, so they can't be bucketed as entry-level or not.
+- `wage_premium_pct` is never negative in this dataset — H-1B law requires the offered wage to be at or above the prevailing wage benchmark for an LCA to be filed at all, and about a third of plausible-wage filings are filed at exactly that floor (0%). This is expected, not a data quality issue.

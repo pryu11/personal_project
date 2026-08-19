@@ -85,6 +85,21 @@ def add_annual_wage(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def add_wage_premium(df: pd.DataFrame) -> pd.DataFrame:
+    """Compares the offered wage to DOL's prevailing (market) wage benchmark for
+    the same role/location -- positive means the employer is offering above
+    market, negative means at/below. PREVAILING_WAGE has its own pay-period unit
+    (PW_UNIT_OF_PAY), which can differ from the offered wage's WAGE_UNIT_OF_PAY,
+    so it needs its own annualization before the two are comparable.
+    """
+    pw_multiplier = df["PW_UNIT_OF_PAY"].map(WAGE_UNIT_MULTIPLIERS)
+    df["ANNUAL_PREVAILING_WAGE"] = df["PREVAILING_WAGE"] * pw_multiplier
+    df["wage_premium_pct"] = (
+        (df["ANNUAL_WAGE_FROM"] - df["ANNUAL_PREVAILING_WAGE"]) / df["ANNUAL_PREVAILING_WAGE"] * 100
+    )
+    return df
+
+
 def add_role_category(df: pd.DataFrame) -> pd.DataFrame:
     soc_prefix = df["SOC_CODE"].str.slice(0, 7)
     df["role_category"] = soc_prefix.map(TECH_SOC_CODES)
@@ -121,6 +136,7 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
     df = add_bay_area_flag(df)
     df = add_employer_standardization(df)
     df = add_annual_wage(df)
+    df = add_wage_premium(df)
     df = add_role_category(df)
     df = add_fiscal_year(df)
     df = add_experience_level(df)

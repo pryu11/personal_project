@@ -11,6 +11,7 @@ ever introduced. See .streamlit/config.toml for the matching app theme.
 """
 
 from pathlib import Path
+from urllib.parse import quote_plus
 
 import pandas as pd
 import plotly.express as px
@@ -116,7 +117,12 @@ st.subheader("Top Sponsoring Employers")
 st.caption(
     f"Top {TOP_EMPLOYERS_SHOWN} by total filings, broken out by fiscal year. "
     "FY2026 is a partial year to date (through Jun 2026) -- more year columns "
-    "will appear automatically as more fiscal quarters/years are added."
+    "will appear automatically as more fiscal quarters/years are added. "
+    "Certified % is certified filings as a share of this employer's total filings "
+    "shown here. Wage vs. Prevailing is the median percent by which this employer's "
+    "offered wage is above (+) or below (-) DOL's prevailing wage benchmark for the "
+    "role, excluding filings flagged as implausible wages. Careers links to a search "
+    "for that company's job postings, not a verified official page."
 )
 by_year = (
     filtered.groupby(["EMPLOYER_NAME_CLEAN", "DECISION_FISCAL_YEAR"])
@@ -131,8 +137,35 @@ employer_table["Total"] = employer_table.sum(axis=1)
 employer_table = employer_table.sort_values("Total", ascending=False).head(TOP_EMPLOYERS_SHOWN)
 employer_table = employer_table.reset_index().rename(columns={"EMPLOYER_NAME_CLEAN": "Company"})
 employer_table.insert(0, "Rank", range(1, len(employer_table) + 1))
-employer_table = employer_table[["Rank", "Company"] + fiscal_year_cols + ["Total"]]
-st.dataframe(employer_table, hide_index=True)
+
+certified_counts = (
+    filtered[filtered["CASE_STATUS"] == "Certified"].groupby("EMPLOYER_NAME_CLEAN").size()
+)
+employer_table["Certified %"] = (
+    employer_table["Company"].map(certified_counts).fillna(0) / employer_table["Total"] * 100
+).map(lambda pct: f"{pct:.1f}%")
+
+wage_premium_by_employer = (
+    filtered[filtered["wage_is_plausible"]]
+    .groupby("EMPLOYER_NAME_CLEAN")["wage_premium_pct"]
+    .median()
+)
+employer_table["Wage vs. Prevailing"] = employer_table["Company"].map(wage_premium_by_employer).map(
+    lambda pct: "—" if pd.isna(pct) else f"{pct:+.1f}%"
+)
+
+employer_table["Careers"] = employer_table["Company"].map(
+    lambda name: f"https://www.google.com/search?q={quote_plus(name + ' careers')}"
+)
+
+employer_table = employer_table[
+    ["Rank", "Company"] + fiscal_year_cols + ["Total", "Certified %", "Wage vs. Prevailing", "Careers"]
+]
+st.dataframe(
+    employer_table,
+    hide_index=True,
+    column_config={"Careers": st.column_config.LinkColumn("Careers", display_text="🔍 Search")},
+)
 
 # --- Salary distribution by role category ---
 st.subheader("Salary Distribution by Role")
@@ -221,3 +254,21 @@ fig = px.bar(county_counts, x="Filings", y="County", orientation="h")
 fig.update_traces(marker_color=CHART_ACCENT)
 fig.update_layout(yaxis={"categoryorder": "total ascending"})
 st.plotly_chart(style_chart(fig))
+
+# --- Resources ---
+st.subheader("Resources")
+st.caption("Official sources for the H-1B process and the data behind this dashboard.")
+st.markdown(
+    "- [USCIS: H-1B Specialty Occupations]"
+    "(https://www.uscis.gov/working-in-the-united-states/h-1b-specialty-occupations) "
+    "— program overview and eligibility\n"
+    "- [USCIS: H-1B Cap Season]"
+    "(https://www.uscis.gov/working-in-the-united-states/temporary-workers/h-1b-specialty-occupations/h-1b-cap-season) "
+    "— registration windows and cap details\n"
+    "- [USCIS: H-1B Electronic Registration Process]"
+    "(https://www.uscis.gov/working-in-the-united-states/temporary-workers/h-1b-specialty-occupations/h-1b-electronic-registration-process) "
+    "— how to register for the cap\n"
+    "- [DOL OFLC: Performance Data]"
+    "(https://www.dol.gov/agencies/eta/foreign-labor/performance) "
+    "— the official LCA disclosure data source behind this dashboard\n"
+)
