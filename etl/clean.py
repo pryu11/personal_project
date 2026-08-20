@@ -1,7 +1,8 @@
-"""Clean the CA tech-role interim data into a final Bay Area analysis dataset.
+"""Clean the CA tech-role interim data into a final statewide analysis dataset.
 
 Takes the interim CSV(s) produced by extract_filter.py and:
-  - flags Bay Area worksites via reference/bay_area_cities.py
+  - derives a statewide county field (raw WORKSITE_COUNTY, normalized, with
+    a city-based fallback) and flags Bay Area worksites from it
   - standardizes employer names (generic suffix-stripping + manual overrides)
   - annualizes wages to a common yearly figure, flagging implausible values
   - adds a human-readable role_category from the SOC code
@@ -18,7 +19,7 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from reference.bay_area_cities import BAY_AREA_CITY_TO_COUNTY, normalize_city
+from reference.bay_area_cities import BAY_AREA_CITY_TO_COUNTY, BAY_AREA_COUNTIES, normalize_city
 from reference.employer_name_map import EMPLOYER_NAME_OVERRIDES
 from reference.tech_soc_codes import TECH_SOC_CODES
 
@@ -61,10 +62,26 @@ def standardize_employer_name(raw: str) -> str:
     return EMPLOYER_NAME_OVERRIDES.get(name, name)
 
 
-def add_bay_area_flag(df: pd.DataFrame) -> pd.DataFrame:
-    normalized = df["WORKSITE_CITY"].apply(normalize_city)
-    df["WORKSITE_COUNTY_INFERRED"] = normalized.map(BAY_AREA_CITY_TO_COUNTY)
-    df["is_bay_area"] = df["WORKSITE_COUNTY_INFERRED"].notna()
+def normalize_county(raw_county) -> str | None:
+    """Collapse raw WORKSITE_COUNTY variants (e.g. "SANTA CLARA COUNTY" vs.
+    "SANTA CLARA") down to one title-cased form."""
+    if pd.isna(raw_county):
+        return None
+    cleaned = re.sub(r"\s+COUNTY$", "", str(raw_county).strip().upper())
+    return cleaned.title()
+
+
+def add_county(df: pd.DataFrame) -> pd.DataFrame:
+    """Raw WORKSITE_COUNTY is ~88% populated statewide once normalized, so it's
+    the primary county field. For the rest, fall back to the Bay Area
+    city->county lookup (reference/bay_area_cities.py) -- rows with neither are
+    labeled "Unknown" rather than dropped from every filter/chart downstream.
+    """
+    normalized_raw = df["WORKSITE_COUNTY"].apply(normalize_county)
+    city_inferred = df["WORKSITE_CITY"].apply(normalize_city).map(BAY_AREA_CITY_TO_COUNTY)
+    county = normalized_raw.fillna(city_inferred)
+    df["is_bay_area"] = county.isin(BAY_AREA_COUNTIES)
+    df["WORKSITE_COUNTY_CLEAN"] = county.fillna("Unknown")
     return df
 
 
@@ -133,7 +150,7 @@ def add_experience_level(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def clean(df: pd.DataFrame) -> pd.DataFrame:
-    df = add_bay_area_flag(df)
+    df = add_county(df)
     df = add_employer_standardization(df)
     df = add_annual_wage(df)
     df = add_wage_premium(df)
@@ -155,12 +172,12 @@ def main():
 
     df = clean(df)
 
-    bay_area_df = df[df["is_bay_area"]].copy()
-    print(f"{len(bay_area_df):,} rows are in the Bay Area (of {len(df):,} CA tech rows)")
+    bay_area_count = df["is_bay_area"].sum()
+    print(f"{bay_area_count:,} of {len(df):,} CA tech rows are in the Bay Area")
 
-    out_path = PROJECT_ROOT / "data" / "processed" / "lca_bay_area_tech_clean.csv"
+    out_path = PROJECT_ROOT / "data" / "processed" / "lca_ca_tech_clean.csv"
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    bay_area_df.to_csv(out_path, index=False)
+    df.to_csv(out_path, index=False)
     print(f"Wrote {out_path}")
 
 

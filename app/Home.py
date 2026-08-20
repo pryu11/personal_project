@@ -1,4 +1,4 @@
-"""Bay Area H-1B Sponsorship Dashboard -- Streamlit entry point.
+"""California H-1B Sponsorship Dashboard -- Streamlit entry point.
 
 Phase 4: sidebar filters (county, role, employer search, case status)
 drive every section below from one shared filtered dataframe. Every chart
@@ -20,7 +20,7 @@ import streamlit as st
 from plotly.subplots import make_subplots
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_PATH = PROJECT_ROOT / "data" / "processed" / "lca_bay_area_tech_clean.csv"
+DATA_PATH = PROJECT_ROOT / "data" / "processed" / "lca_ca_tech_clean.csv"
 
 IVORY = "#f6f7eb"
 TERRACOTTA = "#e94f37"
@@ -54,10 +54,10 @@ def style_chart(fig):
     return fig
 
 
-st.set_page_config(page_title="Bay Area H-1B Sponsorship Dashboard", layout="wide")
-st.title("Bay Area H-1B Sponsorship Dashboard")
+st.set_page_config(page_title="California H-1B Sponsorship Dashboard", layout="wide")
+st.title("California H-1B Sponsorship Dashboard")
 st.caption(
-    "Exploring H-1B LCA filings for tech/data roles in the Bay Area (FY2025 Q3 "
+    "Exploring H-1B LCA filings for tech/data roles across California (FY2025 Q3 "
     "through FY2026 Q3), built from public DOL disclosure data."
 )
 
@@ -67,7 +67,7 @@ df = load_data()
 # numbers everywhere on the page always agree with each other. ---
 st.sidebar.header("Filters")
 
-counties = sorted(df["WORKSITE_COUNTY_INFERRED"].dropna().unique())
+counties = sorted(df["WORKSITE_COUNTY_CLEAN"].dropna().unique())
 selected_counties = st.sidebar.multiselect("County", counties, default=counties)
 
 roles = sorted(df["role_category"].dropna().unique())
@@ -84,7 +84,7 @@ selected_experience_levels = st.sidebar.multiselect(
 company_search = st.sidebar.text_input("Employer name contains")
 
 filtered = df[
-    df["WORKSITE_COUNTY_INFERRED"].isin(selected_counties)
+    df["WORKSITE_COUNTY_CLEAN"].isin(selected_counties)
     & df["role_category"].isin(selected_roles)
     & df["CASE_STATUS"].isin(selected_statuses)
     & df["experience_level"].isin(selected_experience_levels)
@@ -179,6 +179,33 @@ fig.update_traces(marker_color=CHART_ACCENT, line_color=CHART_ACCENT)
 fig.update_layout(xaxis_title=None, yaxis_title="Annual Wage ($)", xaxis_tickangle=-30)
 st.plotly_chart(style_chart(fig))
 
+# --- Salary by experience level ---
+st.subheader("Salary by Experience Level")
+st.caption(
+    "Annual wage quartiles by DOL wage level (the closest proxy this data has "
+    "to seniority). Excludes filings flagged as implausible wages."
+)
+level_order = [
+    "Level I - Entry",
+    "Level II - Qualified",
+    "Level III - Experienced",
+    "Level IV - Fully Competent",
+    "Unknown",
+]
+salary_by_level = (
+    wage_df.groupby("experience_level")["ANNUAL_WAGE_FROM"]
+    .quantile([0.25, 0.5, 0.75])
+    .unstack()
+    .rename(columns={0.25: "25th Percentile", 0.5: "Median", 0.75: "75th Percentile"})
+)
+salary_by_level = salary_by_level.reindex(
+    [lvl for lvl in level_order if lvl in salary_by_level.index]
+)
+salary_by_level = salary_by_level.reset_index().rename(columns={"experience_level": "Experience Level"})
+for col in ["25th Percentile", "Median", "75th Percentile"]:
+    salary_by_level[col] = salary_by_level[col].map(lambda v: f"${v:,.0f}")
+st.dataframe(salary_by_level, hide_index=True)
+
 # --- Monthly filing volume by outcome ---
 st.subheader("Monthly Filing Volume by Outcome")
 st.caption(
@@ -246,8 +273,9 @@ st.plotly_chart(fig)
 
 # --- Geographic breakdown ---
 st.subheader("Filings by County")
+st.caption("Top 15 counties by filing count within the current filters.")
 county_counts = (
-    filtered["WORKSITE_COUNTY_INFERRED"].value_counts().reset_index()
+    filtered["WORKSITE_COUNTY_CLEAN"].value_counts().head(15).reset_index()
 )
 county_counts.columns = ["County", "Filings"]
 fig = px.bar(county_counts, x="Filings", y="County", orientation="h")

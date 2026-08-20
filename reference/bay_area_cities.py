@@ -1,8 +1,10 @@
 """Bay Area city reference for geographic filtering.
 
-WORKSITE_COUNTY is only ~15% populated in the raw LCA data, but
-WORKSITE_CITY is 100% populated (see Phase 1 findings) -- so we
-determine Bay Area membership from city name instead of county.
+Raw WORKSITE_COUNTY is ~88% populated statewide (etl/clean.py normalizes
+and uses it directly as the primary county field) -- but WORKSITE_CITY
+is 100% populated, so this city->county lookup is kept as a fallback for
+the ~12% of rows with no raw county, and to identify which of the
+normalized county names count as "Bay Area" for the is_bay_area flag.
 
 City names in the raw data are messy (mixed case, trailing ", CA",
 missing spaces like "sanjose"). normalize_city() collapses all of
@@ -67,3 +69,7 @@ BAY_AREA_CITY_TO_COUNTY = {
     for county, cities in BAY_AREA_CITIES_BY_COUNTY.items()
     for city in cities
 }
+
+# The 9 official Bay Area counties, matching the title-cased format that
+# etl/clean.py's normalize_county() produces from raw WORKSITE_COUNTY.
+BAY_AREA_COUNTIES = set(BAY_AREA_CITIES_BY_COUNTY.keys())
