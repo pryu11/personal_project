@@ -174,8 +174,15 @@ st.caption(
     "reported. Free text, not standardized -- the same role can appear under many "
     "different titles (see role_category above for a standardized grouping)."
 )
-job_title_counts = filtered["JOB_TITLE"].str.strip().value_counts().head(15).reset_index()
-job_title_counts.columns = ["Job Title", "Filings"]
+job_title_counts = (
+    filtered.assign(JOB_TITLE=filtered["JOB_TITLE"].str.strip())
+    .groupby(["JOB_TITLE", "role_category"])
+    .size()
+    .reset_index(name="Filings")
+    .sort_values("Filings", ascending=False)
+    .head(15)
+    .rename(columns={"JOB_TITLE": "Job Title", "role_category": "Category"})
+)[["Job Title", "Category", "Filings"]]
 st.dataframe(job_title_counts, hide_index=True)
 
 # --- Salary distribution by role category ---
@@ -305,52 +312,6 @@ fig.update_layout(xaxis_title=None, legend_title_text=None)
 fig = style_chart(fig)
 fig.update_yaxes(showgrid=False, secondary_y=True)
 st.plotly_chart(fig)
-
-# --- Approval trend by employer ---
-st.subheader("Approval Trend by Employer")
-st.caption(
-    "Certified filings as a percent of that employer's Certified + Denied filings "
-    "each month, within the current filters -- the aggregate Certified % in the "
-    "employer table above doesn't show whether a company's rate has moved over time."
-)
-trend_companies = filtered["EMPLOYER_NAME_CLEAN"].value_counts().head(50).index.tolist()
-selected_company = st.selectbox("Company", trend_companies)
-company_outcome_df = outcome_df[outcome_df["EMPLOYER_NAME_CLEAN"] == selected_company]
-if company_outcome_df.empty:
-    st.caption(f"No certified/denied filings for {selected_company} in the current filters.")
-else:
-    company_monthly = (
-        company_outcome_df.assign(
-            month=company_outcome_df["DECISION_DATE"].dt.to_period("M").dt.to_timestamp()
-        )
-        .groupby(["month", "CASE_STATUS"])
-        .size()
-        .unstack(fill_value=0)
-    )
-    for status in ["Certified", "Denied"]:
-        if status not in company_monthly.columns:
-            company_monthly[status] = 0
-    company_monthly["Certified Rate"] = (
-        company_monthly["Certified"]
-        / (company_monthly["Certified"] + company_monthly["Denied"])
-        * 100
-    )
-    fig = px.line(company_monthly.reset_index(), x="month", y="Certified Rate", markers=True)
-    fig.update_traces(line_color=CHART_ACCENT, marker_color=CHART_ACCENT)
-    fig.update_layout(xaxis_title=None, yaxis_title="Certified Rate (%)", yaxis_range=[0, 105])
-    st.plotly_chart(style_chart(fig))
-
-# --- Geographic breakdown ---
-st.subheader("Filings by County")
-st.caption("Top 15 counties by filing count within the current filters.")
-county_counts = (
-    filtered["WORKSITE_COUNTY_CLEAN"].value_counts().head(15).reset_index()
-)
-county_counts.columns = ["County", "Filings"]
-fig = px.bar(county_counts, x="Filings", y="County", orientation="h")
-fig.update_traces(marker_color=CHART_ACCENT)
-fig.update_layout(yaxis={"categoryorder": "total ascending"})
-st.plotly_chart(style_chart(fig))
 
 # --- City breakdown ---
 st.subheader("Filings by City")
