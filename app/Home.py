@@ -167,6 +167,17 @@ st.dataframe(
     column_config={"Careers": st.column_config.LinkColumn("Careers", display_text="🔍 Search")},
 )
 
+# --- Top job titles ---
+st.subheader("Top Job Titles")
+st.caption(
+    "Top 15 employer-reported job titles within the current filters, shown as "
+    "reported. Free text, not standardized -- the same role can appear under many "
+    "different titles (see role_category above for a standardized grouping)."
+)
+job_title_counts = filtered["JOB_TITLE"].str.strip().value_counts().head(15).reset_index()
+job_title_counts.columns = ["Job Title", "Filings"]
+st.dataframe(job_title_counts, hide_index=True)
+
 # --- Salary distribution by role category ---
 st.subheader("Salary Distribution by Role")
 st.caption("Excludes filings flagged as implausible wages (likely unit-entry errors).")
@@ -205,6 +216,30 @@ salary_by_level = salary_by_level.reset_index().rename(columns={"experience_leve
 for col in ["25th Percentile", "Median", "75th Percentile"]:
     salary_by_level[col] = salary_by_level[col].map(lambda v: f"${v:,.0f}")
 st.dataframe(salary_by_level, hide_index=True)
+
+# --- Salary by company ---
+st.subheader("Salary by Company")
+st.caption(
+    "Annual wage quartiles for the top 15 employers by filing count within the "
+    "current filters. Excludes filings flagged as implausible wages. Base offered "
+    "wage only -- DOL's LCA data doesn't capture bonus, equity, or other total "
+    "compensation."
+)
+top_companies_by_filings = filtered["EMPLOYER_NAME_CLEAN"].value_counts().head(15).index
+salary_by_company = (
+    wage_df[wage_df["EMPLOYER_NAME_CLEAN"].isin(top_companies_by_filings)]
+    .groupby("EMPLOYER_NAME_CLEAN")["ANNUAL_WAGE_FROM"]
+    .quantile([0.25, 0.5, 0.75])
+    .unstack()
+    .rename(columns={0.25: "25th Percentile", 0.5: "Median", 0.75: "75th Percentile"})
+    .reindex(top_companies_by_filings)
+    .dropna(how="all")
+)
+salary_by_company = salary_by_company.sort_values("Median", ascending=False)
+salary_by_company = salary_by_company.reset_index().rename(columns={"EMPLOYER_NAME_CLEAN": "Company"})
+for col in ["25th Percentile", "Median", "75th Percentile"]:
+    salary_by_company[col] = salary_by_company[col].map(lambda v: f"${v:,.0f}")
+st.dataframe(salary_by_company, hide_index=True)
 
 # --- Monthly filing volume by outcome ---
 st.subheader("Monthly Filing Volume by Outcome")
@@ -271,6 +306,40 @@ fig = style_chart(fig)
 fig.update_yaxes(showgrid=False, secondary_y=True)
 st.plotly_chart(fig)
 
+# --- Approval trend by employer ---
+st.subheader("Approval Trend by Employer")
+st.caption(
+    "Certified filings as a percent of that employer's Certified + Denied filings "
+    "each month, within the current filters -- the aggregate Certified % in the "
+    "employer table above doesn't show whether a company's rate has moved over time."
+)
+trend_companies = filtered["EMPLOYER_NAME_CLEAN"].value_counts().head(50).index.tolist()
+selected_company = st.selectbox("Company", trend_companies)
+company_outcome_df = outcome_df[outcome_df["EMPLOYER_NAME_CLEAN"] == selected_company]
+if company_outcome_df.empty:
+    st.caption(f"No certified/denied filings for {selected_company} in the current filters.")
+else:
+    company_monthly = (
+        company_outcome_df.assign(
+            month=company_outcome_df["DECISION_DATE"].dt.to_period("M").dt.to_timestamp()
+        )
+        .groupby(["month", "CASE_STATUS"])
+        .size()
+        .unstack(fill_value=0)
+    )
+    for status in ["Certified", "Denied"]:
+        if status not in company_monthly.columns:
+            company_monthly[status] = 0
+    company_monthly["Certified Rate"] = (
+        company_monthly["Certified"]
+        / (company_monthly["Certified"] + company_monthly["Denied"])
+        * 100
+    )
+    fig = px.line(company_monthly.reset_index(), x="month", y="Certified Rate", markers=True)
+    fig.update_traces(line_color=CHART_ACCENT, marker_color=CHART_ACCENT)
+    fig.update_layout(xaxis_title=None, yaxis_title="Certified Rate (%)", yaxis_range=[0, 105])
+    st.plotly_chart(style_chart(fig))
+
 # --- Geographic breakdown ---
 st.subheader("Filings by County")
 st.caption("Top 15 counties by filing count within the current filters.")
@@ -279,6 +348,22 @@ county_counts = (
 )
 county_counts.columns = ["County", "Filings"]
 fig = px.bar(county_counts, x="Filings", y="County", orientation="h")
+fig.update_traces(marker_color=CHART_ACCENT)
+fig.update_layout(yaxis={"categoryorder": "total ascending"})
+st.plotly_chart(style_chart(fig))
+
+# --- City breakdown ---
+st.subheader("Filings by City")
+st.caption(
+    "Top 15 worksite cities by filing count within the current filters. LCA "
+    "filings only report a physical worksite address -- there's no field "
+    "indicating whether a role is remote."
+)
+city_counts = (
+    filtered["WORKSITE_CITY"].str.strip().str.title().value_counts().head(15).reset_index()
+)
+city_counts.columns = ["City", "Filings"]
+fig = px.bar(city_counts, x="Filings", y="City", orientation="h")
 fig.update_traces(marker_color=CHART_ACCENT)
 fig.update_layout(yaxis={"categoryorder": "total ascending"})
 st.plotly_chart(style_chart(fig))
